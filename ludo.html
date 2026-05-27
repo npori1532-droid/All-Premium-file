@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Ultimate Classic Ludo 3D</title>
+<style>
+:root {
+  --yellow: #FFD700; --yellow-dark: #b89c00;
+  --blue: #00A2E8;   --blue-dark: #0076a8;
+  --red: #ED1C24;    --red-dark: #b5151b;
+  --green: #22B14C;  --green-dark: #178036;
+  --board-bg: #FFFFFF;
+  --line-color: #333;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+  background: radial-gradient(circle at center, #2989d8 0%, #1a4a7d 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  overflow: hidden;
+  touch-action: manipulation;
+}
+
+/* --- Start Menu --- */
+#menu-modal {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: radial-gradient(circle at center, #2989d8 0%, #1a4a7d 100%);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.5s ease-out;
+}
+
+.menu-box {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 25px;
+  width: 340px;
+  padding: 40px 30px;
+  text-align: center;
+  animation: floatUp 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes floatUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+.menu-box h1 {
+  font-size: 42px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  background: linear-gradient(45deg, var(--red), var(--blue), var(--yellow), var(--green));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin-bottom: 5px;
+}
+
+.menu-subtitle {
+  color: #666;
+  background: #eee;
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: bold;
+  display: inline-block;
+  margin-bottom: 30px;
+}
+
+.menu-btn {
+  width: 100%;
+  padding: 15px;
+  margin-bottom: 15px;
+  border: none;
+  border-radius: 15px;
+  font-size: 18px;
+  font-weight: bold;
+  text-transform: uppercase;
+  color: white;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.btn-cpu {
+  background: linear-gradient(to bottom, #4db8ff, #0076a8);
+  box-shadow: 0 6px 0 #005c8a;
+}
+.btn-pvp {
+  background: linear-gradient(to bottom, #4dff4d, #178036);
+  box-shadow: 0 6px 0 #0f5c23;
+}
+
+.menu-btn:active {
+  transform: translateY(6px);
+  box-shadow: 0 0 0 transparent;
+}
+
+/* --- Game Layout --- */
+#game-ui {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  max-width: 600px;
+  width: 100%;
+  gap: 8px;
+  padding: 10px;
+}
+
+.player-row {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 550px;
+}
+
+#log {
+  background: rgba(0,0,0,0.4);
+  color: white;
+  font-weight: bold;
+  padding: 5px 20px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.2);
+  font-size: 14px;
+  min-height: 28px;
+}
+
+/* --- Player Cards --- */
+.player-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 130px;
+  background: white;
+  border-radius: 10px;
+  padding: 5px 10px;
+  opacity: 0.5;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+  border: 2px solid transparent;
+}
+
+.player-card .player-name {
+  font-weight: bold;
+  font-size: 14px;
+  text-transform: uppercase;
+}
+.player-card.red .player-name { color: var(--red); }
+.player-card.blue .player-name { color: var(--blue); }
+.player-card.yellow .player-name { color: var(--yellow-dark); }
+.player-card.green .player-name { color: var(--green); }
+
+.player-card.active {
+  opacity: 1;
+  transform: scale(1.08);
+  box-shadow: 0 0 15px 5px rgba(255,255,255,0.5);
+  border-color: #fff;
+}
+
+.player-card.active::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 50%; height: 100%;
+  background: linear-gradient(to right, transparent, rgba(255,255,255,0.8), transparent);
+  transform: skewX(-20deg);
+  animation: shine 2s infinite;
+}
+@keyframes shine {
+  0% { left: -100%; }
+  50% { left: 200%; }
+  100% { left: 200%; }
+}
+
+/* --- 3D Dice --- */
+.dice-scene {
+  width: 40px;
+  height: 40px;
+  perspective: 400px;
+  cursor: pointer;
+}
+.dice-scene.disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.dice-cube {
+  width: 100%; height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transform: translateZ(-20px) rotateX(-15deg) rotateY(-15deg);
+  transition: transform 0.3s ease-out;
+}
+.dice-face {
+  position: absolute;
+  width: 40px; height: 40px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  padding: 4px;
+  gap: 2px;
+}
+.dot {
+  background: #333;
+  border-radius: 50%;
+  display: none;
+}
+
+.front  { transform: rotateY(0deg) translateZ(20px); }
+.back   { transform: rotateY(180deg) translateZ(20px); }
+.right  { transform: rotateY(90deg) translateZ(20px); }
+.left   { transform: rotateY(-90deg) translateZ(20px); }
+.top    { transform: rotateX(90deg) translateZ(20px); }
+.bottom { transform: rotateX(-90deg) translateZ(20px); }
+
+/* Front: 1 (dot 5) */
+.front .dot:nth-child(5) { display: block; }
+/* Top: 2 (dots 1, 9) */
+.top .dot:nth-child(1), .top .dot:nth-child(9) { display: block; }
+/* Right: 3 (dots 1, 5, 9) */
+.right .dot:nth-child(1), .right .dot:nth-child(5), .right .dot:nth-child(9) { display: block; }
+/* Left: 4 (dots 1, 3, 7, 9) */
+.left .dot:nth-child(1), .left .dot:nth-child(3), .left .dot:nth-child(7), .left .dot:nth-child(9) { display: block; }
+/* Bottom: 5 (dots 1, 3, 5, 7, 9) */
+.bottom .dot:nth-child(1), .bottom .dot:nth-child(3), .bottom .dot:nth-child(5), .bottom .dot:nth-child(7), .bottom .dot:nth-child(9) { display: block; }
+/* Back: 6 (dots 1, 3, 4, 6, 7, 9) */
+.back .dot:nth-child(1), .back .dot:nth-child(3), .back .dot:nth-child(4), .back .dot:nth-child(6), .back .dot:nth-child(7), .back .dot:nth-child(9) { display: block; }
+
+.spin-animation {
+  animation: spin3D 0.5s ease-out forwards;
+}
+@keyframes spin3D {
+  0% { transform: translateZ(-20px) rotateX(0deg) rotateY(0deg); }
+  50% { transform: translateZ(50px) rotateX(360deg) rotateY(360deg); }
+}
+
+/* --- Ludo Board --- */
+#board {
+  width: 95vw; height: 95vw;
+  max-width: 550px; max-height: 550px;
+  background: var(--board-bg);
+  border: 2px solid var(--line-color);
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.base {
+  position: absolute;
+  width: 40%; height: 40%;
+  z-index: 1;
+  display: flex; align-items: center; justify-content: center;
+}
+.base-red { top: 0; left: 0; background: var(--red); }
+.base-blue { top: 0; right: 0; background: var(--blue); }
+.base-yellow { bottom: 0; right: 0; background: var(--yellow); }
+.base-green { bottom: 0; left: 0; background: var(--green); }
+
+.base-inner {
+  width: 65%; height: 65%;
+  background: white;
+  border-radius: 15%;
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
+}
+
+.center-area {
+  position: absolute;
+  top: 40%; left: 40%;
+  width: 20%; height: 20%;
+  background: conic-gradient(from 45deg, var(--blue) 0deg 90deg, var(--yellow) 90deg 180deg, var(--green) 180deg 270deg, var(--red) 270deg 360deg);
+  border: 1px solid var(--line-color);
+}
+
+#grid {
+  display: grid;
+  grid-template-columns: repeat(15, 1fr);
+  grid-template-rows: repeat(15, 1fr);
+  width: 100%; height: 100%;
+  position: absolute;
+  top: 0; left: 0;
+  z-index: 2;
+}
+
+.cell {
+  border: 1px solid rgba(0,0,0,0.15);
+  position: relative;
+}
+.bg-red { background: var(--red); }
+.bg-blue { background: var(--blue); }
+.bg-yellow { background: var(--yellow); }
+.bg-green { background: var(--green); }
+
+.star::after {
+  content: '★';
+  font-size: clamp(14px, 4vw, 22px);
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.8;
+  color: #444;
+  z-index: 0;
+}
+
+/* --- Tokens --- */
+.token {
+  position: absolute;
+  width: calc(100% / 15 * 0.75);
+  height: calc(100% / 15 * 0.75);
+  border-radius: 50%;
+  border: 2px solid white;
+  transform: translate(-50%, -50%);
+  transition: top 0.25s linear, left 0.25s linear, transform 0.25s;
+  z-index: 10;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.4), inset 0 2px 5px rgba(255,255,255,0.6);
+  cursor: pointer;
+}
+
+.token.red { background: radial-gradient(circle at 30% 30%, #ff6b6b, var(--red-dark)); }
+.token.blue { background: radial-gradient(circle at 30% 30%, #4db8ff, var(--blue-dark)); }
+.token.yellow { background: radial-gradient(circle at 30% 30%, #ffeba3, var(--yellow-dark)); }
+.token.green { background: radial-gradient(circle at 30% 30%, #4dff4d, var(--green-dark)); }
+
+.highlight {
+  animation: tokenPulse 1s infinite alternate;
+  z-index: 999 !important;
+}
+@keyframes tokenPulse {
+  from { box-shadow: 0 0 5px 2px white; }
+  to { box-shadow: 0 0 15px 5px white; }
+}
+
+.pointer {
+  position: absolute;
+  top: -15px; left: 50%;
+  transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 10px solid white;
+  animation: pointerBounce 0.5s infinite alternate;
+  display: none;
+}
+.highlight .pointer { display: block; }
+
+@keyframes pointerBounce {
+  from { top: -20px; }
+  to { top: -10px; }
+}
+
+/* Turn Masking */
+.turn-red .token:not(.red) { pointer-events: none; }
+.turn-blue .token:not(.blue) { pointer-events: none; }
+.turn-yellow .token:not(.yellow) { pointer-events: none; }
+.turn-green .token:not(.green) { pointer-events: none; }
+</style>
+</head>
+<body>
+
+<!-- Start Menu -->
+<div id="menu-modal">
+  <div class="menu-box">
+    <h1>Ludo 3D</h1>
+    <div class="menu-subtitle">★ Safe Stars Enabled ★</div>
+    <button class="menu-btn btn-cpu" onclick="startGame(true)">🤖 1 Player vs CPU</button>
+    <button class="menu-btn btn-pvp" onclick="startGame(false)">👥 Pass & Play (4P)</button>
+  </div>
+</div>
+
+<!-- Game Layout -->
+<div id="game-ui">
+  <div class="player-row">
+    <div class="player-card red" id="card-red">
+      <div class="player-name">Player 1</div>
+      <div class="dice-scene disabled" id="dice-red" onclick="rollDice('red')">
+        <div class="dice-cube" id="cube-red">
+          <div class="dice-face front"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="dice-face back"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="dice-face right"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="dice-face left"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="dice-face top"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="dice-face bottom"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="player-card blue" id="card-blue" style="flex-direction: row-reverse;">
+      <div class="player-name" style="text-align: right;">Player 2</div>
+      <div class="dice-scene disabled" id="dice-blue" onclick="rollDice('blue')">
+        <div class="dice-cube" id="cube-blue">
+          <div class="dice-face front"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="dice-face back"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="dice-face right"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="dice-face left"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="dice-face top"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="dice-face bottom"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div id="log">Ready to play!</div>
+  
+  <div id="board">
+    <div class="base base-red"><div class="base-inner"></div></div>
+    <div class="base base-blue"><div class="base-inner"></div></div>
+    <div class="base base-yellow"><div class="base-inner"></div></div>
+    <div class="base base-green"><div class="base-inner"></div></div>
+    <div class="center-area"></div>
+    <div id="grid"></div>
+  </div>
+  
+  <div class="player-row">
+    <div class="player-card green" id="card-green">
+      <div class="player-name">Player 4</div>
+      <div class="dice-scene disabled" id="dice-green" onclick="rollDice('green')">
+        <div class="dice-cube" id="cube-green">
+          <div class="dice-face front"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="dice-face back"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="dice-face right"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="dice-face left"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="dice-face top"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="dice-face bottom"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="player-card yellow" id="card-yellow" style="flex-direction: row-reverse;">
+      <div class="player-name" style="text-align: right;">Player 3</div>
+      <div class="dice-scene disabled" id="dice-yellow" onclick="rollDice('yellow')">
+        <div class="dice-cube" id="cube-yellow">
+          <div class="dice-face front"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="dice-face back"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="dice-face right"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="dice-face left"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="dice-face top"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="dice-face bottom"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// --- Configuration & Data ---
+const COLORS = ['red', 'blue', 'yellow', 'green'];
+const PLAYER_CONFIG = {
+  red: { isBot: false, name: "Red" },
+  blue: { isBot: false, name: "Blue" },
+  yellow: { isBot: false, name: "Yellow" },
+  green: { isBot: false, name: "Green" }
+};
+
+const MAIN_PATH = [
+  [6,1],[6,2],[6,3],[6,4],[6,5],
+  [5,6],[4,6],[3,6],[2,6],[1,6],[0,6],[0,7],[0,8],
+  [1,8],[2,8],[3,8],[4,8],[5,8],
+  [6,9],[6,10],[6,11],[6,12],[6,13],[6,14],[7,14],[8,14],
+  [8,13],[8,12],[8,11],[8,10],[8,9],
+  [9,8],[10,8],[11,8],[12,8],[13,8],[14,8],[14,7],[14,6],
+  [13,6],[12,6],[11,6],[10,6],[9,6],
+  [8,5],[8,4],[8,3],[8,2],[8,1],[8,0],[7,0],[6,0]
+];
+
+const HOME_PATHS = {
+  red:    [[7,1],[7,2],[7,3],[7,4],[7,5]],
+  blue:   [[1,7],[2,7],[3,7],[4,7],[5,7]],
+  yellow: [[7,13],[7,12],[7,11],[7,10],[7,9]],
+  green:  [[13,7],[12,7],[11,7],[10,7],[9,7]]
+};
+
+const BASE_SPOTS = {
+  red:    [[1.5,1.5],[1.5,3.5],[3.5,1.5],[3.5,3.5]],
+  blue:   [[1.5,10.5],[1.5,12.5],[3.5,10.5],[3.5,12.5]],
+  yellow: [[10.5,10.5],[10.5,12.5],[12.5,10.5],[12.5,12.5]],
+  green:  [[10.5,1.5],[10.5,3.5],[12.5,1.5],[12.5,3.5]]
+};
+
+const SAFE_COORDS = new Set(["6,1","8,2","1,8","2,6","8,13","6,12","13,6","12,8"]);
+const OFFSET_MAP = [{x:0,y:0},{x:-10,y:-10},{x:10,y:10},{x:-10,y:10},{x:10,y:-10}];
+const START_OFFSETS = { red: 0, blue: 13, yellow: 26, green: 39 };
+
+const DICE_TRANSFORMS = {
+  1: 'translateZ(-20px) rotateX(0deg) rotateY(0deg)',
+  2: 'translateZ(-20px) rotateX(-90deg)',
+  3: 'translateZ(-20px) rotateY(-90deg)',
+  4: 'translateZ(-20px) rotateY(90deg)',
+  5: 'translateZ(-20px) rotateX(90deg)',
+  6: 'translateZ(-20px) rotateX(180deg)'
+};
+
+// --- Game State ---
+let state = {
+  turnIndex: 0,
+  diceValue: null,
+  diceRolled: false,
+  tokens: { red: [-1,-1,-1,-1], blue: [-1,-1,-1,-1], yellow: [-1,-1,-1,-1], green: [-1,-1,-1,-1] },
+  gameOver: false,
+  isAnimating: false,
+  consecutiveSixes: 0,
+  lastMovedToken: null
+};
+
+// --- Initialization ---
+function startGame(isVsCPU) {
+  if (isVsCPU) {
+    PLAYER_CONFIG.blue.isBot = true;
+    PLAYER_CONFIG.yellow.isBot = true;
+    PLAYER_CONFIG.green.isBot = true;
+    PLAYER_CONFIG.blue.name = "Bot 1";
+    PLAYER_CONFIG.yellow.name = "Bot 2";
+    PLAYER_CONFIG.green.name = "Bot 3";
+  }
+  
+  COLORS.forEach(c => {
+    document.querySelector(`#card-${c} .player-name`).innerText = PLAYER_CONFIG[c].name;
+  });
+
+  document.getElementById('menu-modal').style.display = 'none';
+  document.getElementById('game-ui').style.display = 'flex';
+  
+  initBoard();
+  updateBoard();
+  updateUI();
+  log("Game Started! " + PLAYER_CONFIG[COLORS[0]].name + "'s turn.");
+}
+
+function initBoard() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  
+  for (let r = 0; r < 15; r++) {
+    for (let c = 0; c < 15; c++) {
+      const cell = document.createElement('div');
+      let isCorner = (r < 6 && c < 6) || (r < 6 && c > 8) || (r > 8 && c > 8) || (r > 8 && c < 6);
+      let isCenter = (r > 5 && r < 9 && c > 5 && c < 9);
+      
+      if (!isCorner && !isCenter) {
+        cell.className = 'cell';
+        if (r===6 && c===1) cell.classList.add('bg-red');
+        if (r===7 && c>=1 && c<=5) cell.classList.add('bg-red');
+        if (r===1 && c===8) cell.classList.add('bg-blue');
+        if (c===7 && r>=1 && r<=5) cell.classList.add('bg-blue');
+        if (r===8 && c===13) cell.classList.add('bg-yellow');
+        if (r===7 && c>=9 && c<=13) cell.classList.add('bg-yellow');
+        if (r===13 && c===6) cell.classList.add('bg-green');
+        if (c===7 && r>=9 && r<=13) cell.classList.add('bg-green');
+        if (SAFE_COORDS.has(`${r},${c}`)) cell.classList.add('star');
+      }
+      grid.appendChild(cell);
+    }
+  }
+
+  const board = document.getElementById('board');
+  COLORS.forEach(color => {
+    for (let i = 0; i < 4; i++) {
+      let token = document.createElement('div');
+      token.className = `token ${color}`;
+      token.id = `token-${color}-${i}`;
+      token.onclick = () => handleTokenClick(color, i);
+      let pointer = document.createElement('div');
+      pointer.className = 'pointer';
+      token.appendChild(pointer);
+      board.appendChild(token);
+    }
+  });
+}
+
+function log(msg) {
+  document.getElementById('log').innerText = msg;
+}
+
+const sleep = ms => new Promise(res => setTimeout(res, ms));
+
+// --- Coordinate & Logic Helpers ---
+function getGridCoords(color, pos) {
+  if (pos === -1) return null; // Handled separately
+  if (pos >= 0 && pos <= 50) {
+    let absIdx = (pos + START_OFFSETS[color]) % 52;
+    return MAIN_PATH[absIdx];
+  }
+  if (pos >= 51 && pos <= 55) {
+    return HOME_PATHS[color][pos - 51];
+  }
+  return [7, 7]; // 56 = Center
+}
+
+function getGridPercentage(r, c) {
+  return { top: (r + 0.5) * (100 / 15), left: (c + 0.5) * (100 / 15) };
+}
+
+function getAbsoluteMainIndex(color, pos) {
+  if (pos < 0 || pos > 50) return -1;
+  return (pos + START_OFFSETS[color]) % 52;
+}
+
+// --- Rendering ---
+function updateBoard(skipColor = null, skipIdx = null) {
+  let cellOccupants = {}; // key: "r,c", value: array of {color, idx, id}
+  
+  COLORS.forEach(color => {
+    state.tokens[color].forEach((pos, idx) => {
+      if (color === skipColor && idx === skipIdx) return;
+      
+      let r, c;
+      if (pos === -1) {
+        r = BASE_SPOTS[color][idx][0];
+        c = BASE_SPOTS[color][idx][1];
+      } else {
+        [r, c] = getGridCoords(color, pos);
+      }
+      
+      let key = `${r},${c}`;
+      if (!cellOccupants[key]) cellOccupants[key] = [];
+      cellOccupants[key].push({ color, idx, id: `token-${color}-${idx}` });
+    });
+  });
+
+  COLORS.forEach(color => {
+    state.tokens[color].forEach((pos, idx) => {
+      let el = document.getElementById(`token-${color}-${idx}`);
+      
+      if (color === skipColor && idx === skipIdx) {
+        let [r, c] = getGridCoords(color, pos);
+        let pc = getGridPercentage(r, c);
+        el.style.top = `${pc.top}%`;
+        el.style.left = `${pc.left}%`;
+        el.style.transform = `translate(-50%, -50%) scale(1)`;
+        el.style.zIndex = 100;
+        return;
+      }
+
+      let r, c, isBase = false;
+      if (pos === -1) {
+        r = BASE_SPOTS[color][idx][0];
+        c = BASE_SPOTS[color][idx][1];
+        isBase = true;
+      } else {
+        [r, c] = getGridCoords(color, pos);
+      }
+
+      let key = `${r},${c}`;
+      let occupants = cellOccupants[key];
+      let myOverlapIdx = occupants.findIndex(o => o.id === el.id);
+      
+      let pc = getGridPercentage(r, c);
+      let isSafe = SAFE_COORDS.has(key) && !isBase;
+      
+      if (pos === 56) {
+        el.style.display = 'none';
+        return;
+      } else {
+        el.style.display = 'block';
+      }
+
+      if (occupants.length > 1 && !isBase) {
+        if (isSafe) {
+          el.style.top = `${pc.top}%`;
+          el.style.left = `${pc.left}%`;
+          el.style.transform = `translate(-50%, -50%) scale(1)`;
+          el.style.zIndex = 10 + myOverlapIdx;
+        } else {
+          let offset = OFFSET_MAP[Math.min(myOverlapIdx, 4)];
+          el.style.top = `calc(${pc.top}% + ${offset.y}px)`;
+          el.style.left = `calc(${pc.left}% + ${offset.x}px)`;
+          el.style.transform = `translate(-50%, -50%) scale(0.85)`;
+          el.style.zIndex = 10 + myOverlapIdx;
+        }
+      } else {
+        el.style.top = `${pc.top}%`;
+        el.style.left = `${pc.left}%`;
+        el.style.transform = `translate(-50%, -50%) scale(1)`;
+        el.style.zIndex = 10;
+      }
+    });
+  });
+}
+
+function updateUI() {
+  const currColor = COLORS[state.turnIndex];
+  
+  COLORS.forEach(c => {
+    document.getElementById(`card-${c}`).classList.remove('active');
+    document.getElementById(`dice-${c}`).classList.add('disabled');
+  });
+  
+  document.getElementById(`card-${currColor}`).classList.add('active');
+  document.getElementById('board').className = `turn-${currColor}`;
+  
+  if (!state.diceRolled && !state.isAnimating) {
+    document.getElementById(`dice-${currColor}`).classList.remove('disabled');
+  }
+
+  // Clear highlights
+  document.querySelectorAll('.token').forEach(t => t.classList.remove('highlight'));
+}
+
+// --- Gameplay Logic ---
+function getBlockades() {
+  let mainCounts = {};
+  COLORS.forEach(c => {
+    state.tokens[c].forEach(pos => {
+      if (pos >= 0 && pos <= 50) {
+        let absIdx = getAbsoluteMainIndex(c, pos);
+        let key = `${c}-${absIdx}`;
+        mainCounts[key] = (mainCounts[key] || 0) + 1;
+      }
+    });
+  });
+  
+  let blockedAbsoluteIndices = [];
+  for (let k in mainCounts) {
+    if (mainCounts[k] >= 2) blockedAbsoluteIndices.push(parseInt(k.split('-')[1]));
+  }
+  return blockedAbsoluteIndices;
+}
+
+function getValidMoves(color, roll) {
+  let valid = [];
+  let blockades = getBlockades();
+  
+  state.tokens[color].forEach((pos, idx) => {
+    if (pos === -1 && roll === 6) {
+      valid.push(idx);
+    } else if (pos >= 0 && pos + roll <= 56) {
+      let isBlocked = false;
+      for (let step = 1; step <= roll; step++) {
+        let checkPos = pos + step;
+        if (checkPos <= 50) {
+          let absIdx = getAbsoluteMainIndex(color, checkPos);
+          if (blockades.includes(absIdx)) {
+            // Check if blockade is NOT our own color
+            let ourTokensThere = state.tokens[color].filter(p => p >= 0 && p <= 50 && getAbsoluteMainIndex(color, p) === absIdx).length;
+            if (ourTokensThere < 2) {
+              isBlocked = true;
+              break;
+            }
+          }
+        }
+      }
+      if (!isBlocked) valid.push(idx);
+    }
+  });
+  return valid;
+}
+
+async function rollDice(colorClick) {
+  let currColor = COLORS[state.turnIndex];
+  if (colorClick !== currColor || state.diceRolled || state.isAnimating || state.gameOver) return;
+  
+  state.isAnimating = true;
+  document.getElementById(`dice-${currColor}`).classList.add('disabled');
+  
+  let diceCube = document.getElementById(`cube-${currColor}`);
+  diceCube.style.animation = 'none';
+  diceCube.offsetHeight; // reflow
+  diceCube.style.animation = 'spin3D 0.5s ease-out forwards';
+  
+  await sleep(500);
+  
+  // Math.floor(Math.random() * 6) + 1;
+  let val = Math.floor(Math.random() * 6) + 1; 
+  state.diceValue = val;
+  state.diceRolled = true;
+  
+  diceCube.style.transform = DICE_TRANSFORMS[val];
+  diceCube.style.animation = 'none';
+  
+  log(`${PLAYER_CONFIG[currColor].name} rolled a ${val}!`);
+  
+  if (val === 6) {
+    state.consecutiveSixes++;
+    if (state.consecutiveSixes === 3) {
+      log("Three 6s! Turn forfeited.");
+      if (state.lastMovedToken && state.lastMovedToken.color === currColor) {
+        state.tokens[currColor][state.lastMovedToken.index] = -1;
+        updateBoard();
+      }
+      state.isAnimating = false;
+      setTimeout(nextTurn, 1000);
+      return;
+    }
+  } else {
+    state.consecutiveSixes = 0;
+  }
+
+  processPostRoll();
+}
+
+function processPostRoll() {
+  let currColor = COLORS[state.turnIndex];
+  let validMoves = getValidMoves(currColor, state.diceValue);
+  
+  if (validMoves.length === 0) {
+    log("No valid moves.");
+    state.isAnimating = false;
+    setTimeout(nextTurn, 1200);
+  } else {
+    state.isAnimating = false;
+    if (PLAYER_CONFIG[currColor].isBot) {
+      setTimeout(() => handleTokenClick(currColor, validMoves[0]), 600);
+    } else {
+      validMoves.forEach(idx => {
+        document.getElementById(`token-${currColor}-${idx}`).classList.add('highlight');
+      });
+    }
+  }
+}
+
+async function handleTokenClick(color, idx) {
+  let currColor = COLORS[state.turnIndex];
+  if (color !== currColor || !state.diceRolled || state.isAnimating || state.gameOver) return;
+  
+  let validMoves = getValidMoves(currColor, state.diceValue);
+  if (!validMoves.includes(idx)) return;
+  
+  document.querySelectorAll('.token').forEach(t => t.classList.remove('highlight'));
+  state.isAnimating = true;
+  state.lastMovedToken = { color, index: idx };
+  
+  let startPos = state.tokens[color][idx];
+  let steps = state.diceValue;
+  
+  if (startPos === -1 && steps === 6) {
+    state.tokens[color][idx] = 0;
+    updateBoard();
+  } else {
+    for (let i = 0; i < steps; i++) {
+      state.tokens[color][idx]++;
+      updateBoard(color, idx);
+      await sleep(250);
+    }
+    updateBoard(); // Final snap to resolve stacking
+  }
+  
+  let extraTurn = state.diceValue === 6;
+  let targetPos = state.tokens[color][idx];
+  
+  // Check Capture
+  if (targetPos >= 0 && targetPos <= 50) {
+    let absIdx = getAbsoluteMainIndex(color, targetPos);
+    let myGrid = getGridCoords(color, targetPos);
+    let key = `${myGrid[0]},${myGrid[1]}`;
+    
+    if (!SAFE_COORDS.has(key)) {
+      COLORS.forEach(oppColor => {
+        if (oppColor !== color) {
+          state.tokens[oppColor].forEach((oppPos, oppIdx) => {
+            if (oppPos >= 0 && oppPos <= 50 && getAbsoluteMainIndex(oppColor, oppPos) === absIdx) {
+              state.tokens[oppColor][oppIdx] = -1;
+              log(`${PLAYER_CONFIG[color].name} captured ${PLAYER_CONFIG[oppColor].name}!`);
+              extraTurn = true;
+              updateBoard();
+            }
+          });
+        }
+      });
+    }
+  }
+
+  // Check Win
+  if (targetPos === 56) {
+    log(`${PLAYER_CONFIG[color].name} reached the center!`);
+    extraTurn = true;
+    let finished = state.tokens[color].filter(p => p === 56).length;
+    if (finished === 4) {
+      state.gameOver = true;
+      alert(`${PLAYER_CONFIG[color].name} WINS!`);
+      return;
+    }
+  }
+
+  state.isAnimating = false;
+  if (extraTurn) {
+    log(`${PLAYER_CONFIG[color].name} gets an extra turn!`);
+    state.diceRolled = false;
+    updateUI();
+    if (PLAYER_CONFIG[currColor].isBot) setTimeout(() => rollDice(currColor), 1000);
+  } else {
+    nextTurn();
+  }
+}
+
+function nextTurn() {
+  state.turnIndex = (state.turnIndex + 1) % 4;
+  state.diceRolled = false;
+  state.diceValue = null;
+  state.consecutiveSixes = 0;
+  
+  updateUI();
+  let nextC = COLORS[state.turnIndex];
+  log(`${PLAYER_CONFIG[nextC].name}'s turn.`);
+  
+  if (PLAYER_CONFIG[nextC].isBot && !state.gameOver) {
+    setTimeout(() => rollDice(nextC), 1000);
+  }
+}
+
+// Initial Setup Call
+// startGame(true); // Called by UI buttons
+</script>
+</body>
+</html>
